@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Tweet, DayOfWeek } from '@/types/tweet';
-import { format } from 'date-fns';
-import { RefreshCw, X, Calendar, Clock, Sparkles } from 'lucide-react';
+import { Tweet, TweetThread, DayOfWeek } from '@/types/tweet';
+import { format, isBefore, startOfDay } from 'date-fns';
+import { RefreshCw, Calendar as CalendarIcon, Clock, Sparkles } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,8 +12,11 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { regenerateTweetContent, getDayName } from '@/data/mockTweets';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { regenerateTweetContent, getDayName, recalculateThreadDates } from '@/data/mockTweets';
 import { cn } from '@/lib/utils';
+import { ThreadEditor } from './ThreadEditor';
 
 interface EditTweetModalProps {
   tweet: Tweet | null;
@@ -34,17 +37,19 @@ const dayOptions: { id: DayOfWeek; label: string; color: string }[] = [
 
 export const EditTweetModal = ({ tweet, isOpen, onClose, onSave }: EditTweetModalProps) => {
   const [content, setContent] = useState('');
-  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledDate, setScheduledDate] = useState<Date>(new Date());
   const [scheduledTime, setScheduledTime] = useState('');
   const [selectedDay, setSelectedDay] = useState<DayOfWeek>('monday');
+  const [threads, setThreads] = useState<TweetThread[]>([]);
   const [isRegenerating, setIsRegenerating] = useState(false);
 
   useEffect(() => {
     if (tweet) {
       setContent(tweet.content);
-      setScheduledDate(format(tweet.scheduledDate, 'yyyy-MM-dd'));
+      setScheduledDate(tweet.scheduledDate);
       setScheduledTime(format(tweet.scheduledDate, 'HH:mm'));
       setSelectedDay(getDayName(tweet.scheduledDate.getDay() === 0 ? 6 : tweet.scheduledDate.getDay() - 1));
+      setThreads(tweet.threads || []);
     }
   }, [tweet]);
 
@@ -56,18 +61,47 @@ export const EditTweetModal = ({ tweet, isOpen, onClose, onSave }: EditTweetModa
     }, 500);
   };
 
+  const handleDateSelect = (date: Date | undefined) => {
+    if (!date) return;
+    
+    // Preserve the time when changing the date
+    const [hours, minutes] = scheduledTime.split(':').map(Number);
+    const newDate = new Date(date);
+    newDate.setHours(hours, minutes);
+    setScheduledDate(newDate);
+
+    // Update selected day chip based on new date
+    const dayIndex = newDate.getDay() === 0 ? 6 : newDate.getDay() - 1;
+    setSelectedDay(getDayName(dayIndex));
+
+    // Recalculate thread dates based on new main tweet date
+    if (threads.length > 0) {
+      setThreads(recalculateThreadDates(newDate, threads));
+    }
+  };
+
+  const handleTimeChange = (timeString: string) => {
+    setScheduledTime(timeString);
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const newDate = new Date(scheduledDate);
+    newDate.setHours(hours, minutes);
+    setScheduledDate(newDate);
+
+    // Recalculate thread dates based on new main tweet time
+    if (threads.length > 0) {
+      setThreads(recalculateThreadDates(newDate, threads));
+    }
+  };
+
   const handleSave = () => {
     if (!tweet) return;
-    
-    const [year, month, day] = scheduledDate.split('-').map(Number);
-    const [hours, minutes] = scheduledTime.split(':').map(Number);
-    const newDate = new Date(year, month - 1, day, hours, minutes);
 
     onSave(
       {
         ...tweet,
         content,
-        scheduledDate: newDate,
+        scheduledDate,
+        threads: threads.length > 0 ? threads : undefined,
       },
       selectedDay
     );
@@ -82,8 +116,8 @@ export const EditTweetModal = ({ tweet, isOpen, onClose, onSave }: EditTweetModa
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-2xl">
-        <DialogHeader className="p-6 pb-4 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10">
+      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-2xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="p-6 pb-4 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 flex-shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary" />
@@ -92,7 +126,7 @@ export const EditTweetModal = ({ tweet, isOpen, onClose, onSave }: EditTweetModa
           </div>
         </DialogHeader>
 
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-5 overflow-y-auto flex-1">
           {/* Author Info */}
           <div className="flex items-center gap-3">
             <img
@@ -125,7 +159,7 @@ export const EditTweetModal = ({ tweet, isOpen, onClose, onSave }: EditTweetModa
               id="content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="min-h-[120px] resize-none rounded-xl"
+              className="min-h-[100px] resize-none rounded-xl"
               placeholder="What's happening?"
             />
             <Button
@@ -161,20 +195,36 @@ export const EditTweetModal = ({ tweet, isOpen, onClose, onSave }: EditTweetModa
             </div>
           </div>
 
-          {/* Date and Time */}
+          {/* Date and Time with Calendar */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="date" className="text-sm font-medium flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5" />
+              <Label className="text-sm font-medium flex items-center gap-1.5">
+                <CalendarIcon className="w-3.5 h-3.5" />
                 Date
               </Label>
-              <Input
-                id="date"
-                type="date"
-                value={scheduledDate}
-                onChange={(e) => setScheduledDate(e.target.value)}
-                className="rounded-lg"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-full justify-start text-left font-normal rounded-lg',
+                      !scheduledDate && 'text-muted-foreground'
+                    )}
+                  >
+                    {scheduledDate ? format(scheduledDate, 'PPP') : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={scheduledDate}
+                    onSelect={handleDateSelect}
+                    disabled={(date) => isBefore(date, startOfDay(new Date()))}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
               <Label htmlFor="time" className="text-sm font-medium flex items-center gap-1.5">
@@ -185,15 +235,22 @@ export const EditTweetModal = ({ tweet, isOpen, onClose, onSave }: EditTweetModa
                 id="time"
                 type="time"
                 value={scheduledTime}
-                onChange={(e) => setScheduledTime(e.target.value)}
+                onChange={(e) => handleTimeChange(e.target.value)}
                 className="rounded-lg"
               />
             </div>
           </div>
+
+          {/* Thread Editor */}
+          <ThreadEditor
+            threads={threads}
+            mainTweetDate={scheduledDate}
+            onThreadsChange={setThreads}
+          />
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 pt-4 border-t bg-muted/30">
+        <div className="flex items-center justify-end gap-3 p-6 pt-4 border-t bg-muted/30 flex-shrink-0">
           <Button variant="outline" onClick={onClose} className="rounded-lg">
             Cancel
           </Button>

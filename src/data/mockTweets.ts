@@ -1,5 +1,5 @@
-import { Tweet, KanbanColumn, DayOfWeek } from '@/types/tweet';
-import { startOfWeek, addDays, setHours, setMinutes } from 'date-fns';
+import { Tweet, KanbanColumn, DayOfWeek, TweetThread } from '@/types/tweet';
+import { startOfWeek, addDays, setHours, setMinutes, addSeconds } from 'date-fns';
 
 const today = new Date();
 const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
@@ -28,24 +28,58 @@ const tweetContents = [
   "Best investment in 2024: A good mechanical keyboard. My WPM went up by 20! ⌨️",
 ];
 
+const threadContents = [
+  "🧵 Thread continues... Here's the first key insight you need to know.",
+  "Second point: This is where things get really interesting. Let me explain...",
+  "Third: The results speak for themselves. Numbers don't lie! 📊",
+  "Fourth: But wait, there's more! Here's the unexpected twist in the story.",
+  "Fifth: Wrapping up with the most important takeaway. Don't miss this! 🎯",
+  "Here's a deeper dive into the technical details for those interested... 🔍",
+  "Quick follow-up: I forgot to mention this crucial point earlier!",
+  "Bonus tip that I learned the hard way. Save yourself the headache! 💡",
+];
+
 const generateRandomTime = (date: Date): Date => {
   const hours = Math.floor(Math.random() * 12) + 8; // 8 AM to 8 PM
   const minutes = Math.floor(Math.random() * 4) * 15; // 0, 15, 30, or 45
   return setMinutes(setHours(date, hours), minutes);
 };
 
+const generateThreads = (mainTweetDate: Date, count: number): TweetThread[] => {
+  const threads: TweetThread[] = [];
+  let previousDate = mainTweetDate;
+
+  for (let i = 0; i < count; i++) {
+    const threadDate = addSeconds(previousDate, 30);
+    threads.push({
+      id: `thread-${Date.now()}-${i}`,
+      content: threadContents[i % threadContents.length],
+      scheduledDate: threadDate,
+    });
+    previousDate = threadDate;
+  }
+
+  return threads;
+};
+
 const generateTweet = (dayOffset: number, index: number): Tweet => {
   const date = addDays(weekStart, dayOffset);
   const author = mockAuthors[Math.floor(Math.random() * mockAuthors.length)];
   const content = tweetContents[(dayOffset * 2 + index) % tweetContents.length];
+  const scheduledDate = generateRandomTime(date);
+  
+  // Randomly add 0-3 threads to some tweets
+  const threadCount = Math.random() > 0.5 ? Math.floor(Math.random() * 3) + 1 : 0;
+  const threads = threadCount > 0 ? generateThreads(scheduledDate, threadCount) : undefined;
   
   return {
     id: `tweet-${dayOffset}-${index}-${Date.now()}`,
     content,
-    scheduledDate: generateRandomTime(date),
+    scheduledDate,
     author,
     likes: Math.floor(Math.random() * 500) + 10,
     retweets: Math.floor(Math.random() * 100) + 5,
+    threads,
   };
 };
 
@@ -96,6 +130,35 @@ export const generateNewTweet = (content: string = ''): Tweet => {
   };
 };
 
+export const generateNewThread = (mainTweetDate: Date, existingThreads: TweetThread[] = []): TweetThread => {
+  const lastDate = existingThreads.length > 0 
+    ? existingThreads[existingThreads.length - 1].scheduledDate 
+    : mainTweetDate;
+  
+  return {
+    id: `thread-new-${Date.now()}`,
+    content: threadContents[Math.floor(Math.random() * threadContents.length)],
+    scheduledDate: addSeconds(lastDate, 30),
+  };
+};
+
 export const regenerateTweetContent = (): string => {
   return tweetContents[Math.floor(Math.random() * tweetContents.length)];
+};
+
+export const regenerateThreadContent = (): string => {
+  return threadContents[Math.floor(Math.random() * threadContents.length)];
+};
+
+export const recalculateThreadDates = (mainTweetDate: Date, threads: TweetThread[]): TweetThread[] => {
+  let previousDate = mainTweetDate;
+  
+  return threads.map((thread) => {
+    const newDate = addSeconds(previousDate, 30);
+    previousDate = newDate;
+    return {
+      ...thread,
+      scheduledDate: newDate,
+    };
+  });
 };
