@@ -1,3 +1,9 @@
+export interface TweetThread {
+  id: string;
+  content: string;
+  scheduledDate: Date;
+}
+
 export interface Tweet {
   id: string;
   content: string;
@@ -9,6 +15,7 @@ export interface Tweet {
   };
   likes?: number;
   retweets?: number;
+  threads?: TweetThread[];
 }
 
 export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';

@@ -1,6 +1,6 @@
 import { Tweet, DayOfWeek } from '@/types/tweet';
 import { format } from 'date-fns';
-import { Edit3, Trash2, RefreshCw, Clock, Heart, Repeat2, GripVertical } from 'lucide-react';
+import { Edit3, Trash2, RefreshCw, Clock, Heart, Repeat2, GripVertical, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -90,6 +90,12 @@ export const TweetCard = ({
           <Repeat2 className="w-3.5 h-3.5" />
           <span>{tweet.retweets}</span>
         </div>
+        {tweet.threads && tweet.threads.length > 0 && (
+          <div className="flex items-center gap-1 text-primary">
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>{tweet.threads.length} {tweet.threads.length === 1 ? 'thread' : 'threads'}</span>
+          </div>
+        )}
       </div>
 
       {/* Actions */}
