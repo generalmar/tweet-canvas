@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { TweetThread } from '@/types/tweet';
 import { format, addSeconds, isBefore } from 'date-fns';
-import { RefreshCw, Trash2, Clock, Plus, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { RefreshCw, Trash2, Clock, Plus, MessageSquare, ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -135,6 +136,24 @@ export const ThreadEditor = ({ threads, mainTweetDate, onThreadsChange }: Thread
     onThreadsChange(updatedThreads);
   };
 
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    
+    const sourceIndex = result.source.index;
+    const destIndex = result.destination.index;
+    
+    if (sourceIndex === destIndex) return;
+
+    // Reorder threads
+    const reorderedThreads = Array.from(threads);
+    const [removed] = reorderedThreads.splice(sourceIndex, 1);
+    reorderedThreads.splice(destIndex, 0, removed);
+
+    // Recalculate all thread dates after reordering
+    const recalculated = recalculateThreadDates(mainTweetDate, reorderedThreads);
+    onThreadsChange(recalculated);
+  };
+
   const getMinDate = (threadIndex: number): Date => {
     if (threadIndex === 0) {
       return addSeconds(mainTweetDate, 30);
@@ -171,122 +190,155 @@ export const ThreadEditor = ({ threads, mainTweetDate, onThreadsChange }: Thread
           <MessageSquare className="w-3.5 h-3.5" />
           Thread ({threads.length} {threads.length === 1 ? 'reply' : 'replies'})
         </Label>
+        <span className="text-xs text-muted-foreground">Drag to reorder</span>
       </div>
 
-      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-        {threads.map((thread, index) => {
-          const isExpanded = expandedThreads.has(thread.id);
-          const isRegenerating = regeneratingIds.has(thread.id);
-          const minDate = getMinDate(index);
-
-          return (
-            <div
-              key={thread.id}
-              className="border border-border/50 rounded-lg bg-muted/30 overflow-hidden"
-            >
-              {/* Thread Header */}
-              <button
-                type="button"
-                onClick={() => toggleExpanded(thread.id)}
-                className="w-full flex items-center gap-2 p-3 hover:bg-muted/50 transition-colors text-left"
-              >
-                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                  {index + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground truncate">
-                    {thread.content.slice(0, 50)}...
-                  </p>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                    <Clock className="w-3 h-3" />
-                    <span>{format(thread.scheduledDate, 'MMM d, h:mm:ss a')}</span>
-                    <span className="text-primary/70">
-                      (+{30 * (index + 1)}s)
-                    </span>
-                  </div>
-                </div>
-                {isExpanded ? (
-                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                )}
-              </button>
-
-              {/* Thread Content (Expanded) */}
-              {isExpanded && (
-                <div className="p-3 pt-0 space-y-3 border-t border-border/30">
-                  <Textarea
-                    value={thread.content}
-                    onChange={(e) => handleContentChange(thread.id, e.target.value)}
-                    className="min-h-[80px] resize-none rounded-lg text-sm"
-                    placeholder="Thread content..."
-                  />
-
-                  {/* Thread Schedule */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Date</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full justify-start text-xs h-8"
-                          >
-                            {format(thread.scheduledDate, 'MMM d, yyyy')}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={thread.scheduledDate}
-                            onSelect={(date) => handleDateChange(thread.id, date)}
-                            disabled={(date) => isBefore(date, minDate)}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Time</Label>
-                      <Input
-                        type="time"
-                        step="1"
-                        value={format(thread.scheduledDate, 'HH:mm:ss')}
-                        onChange={(e) => handleTimeChange(thread.id, e.target.value)}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Thread Actions */}
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex-1 h-7 text-xs gap-1 hover:bg-accent/20"
-                      onClick={() => handleRegenerateThread(thread.id)}
-                      disabled={isRegenerating}
-                    >
-                      <RefreshCw className={cn('w-3 h-3', isRegenerating && 'animate-spin')} />
-                      Regenerate
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex-1 h-7 text-xs gap-1 hover:bg-destructive/10 hover:text-destructive"
-                      onClick={() => handleDeleteThread(thread.id)}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      Delete
-                    </Button>
-                  </div>
-                </div>
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Droppable droppableId="thread-list">
+          {(provided, snapshot) => (
+            <div 
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              className={cn(
+                "space-y-2 max-h-[300px] overflow-y-auto pr-1 rounded-lg transition-colors",
+                snapshot.isDraggingOver && "bg-primary/5"
               )}
+            >
+              {threads.map((thread, index) => {
+                const isExpanded = expandedThreads.has(thread.id);
+                const isRegenerating = regeneratingIds.has(thread.id);
+                const minDate = getMinDate(index);
+
+                return (
+                  <Draggable key={thread.id} draggableId={thread.id} index={index}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        className={cn(
+                          "border border-border/50 rounded-lg bg-muted/30 overflow-hidden transition-all",
+                          snapshot.isDragging && "shadow-lg ring-2 ring-primary/20 rotate-1"
+                        )}
+                      >
+                        {/* Thread Header */}
+                        <div className="flex items-center">
+                          {/* Drag Handle */}
+                          <div
+                            {...provided.dragHandleProps}
+                            className="px-2 py-3 cursor-grab hover:bg-muted/50 transition-colors"
+                          >
+                            <GripVertical className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                          
+                          <button
+                            type="button"
+                            onClick={() => toggleExpanded(thread.id)}
+                            className="flex-1 flex items-center gap-2 p-3 pl-0 hover:bg-muted/50 transition-colors text-left"
+                          >
+                            <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                              {index + 1}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-muted-foreground truncate">
+                                {thread.content.slice(0, 50)}...
+                              </p>
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                                <Clock className="w-3 h-3" />
+                                <span>{format(thread.scheduledDate, 'MMM d, h:mm:ss a')}</span>
+                                <span className="text-primary/70">
+                                  (+{30 * (index + 1)}s)
+                                </span>
+                              </div>
+                            </div>
+                            {isExpanded ? (
+                              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Thread Content (Expanded) */}
+                        {isExpanded && (
+                          <div className="p-3 pt-0 space-y-3 border-t border-border/30">
+                            <Textarea
+                              value={thread.content}
+                              onChange={(e) => handleContentChange(thread.id, e.target.value)}
+                              className="min-h-[80px] resize-none rounded-lg text-sm"
+                              placeholder="Thread content..."
+                            />
+
+                            {/* Thread Schedule */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Date</Label>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full justify-start text-xs h-8"
+                                    >
+                                      {format(thread.scheduledDate, 'MMM d, yyyy')}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                      mode="single"
+                                      selected={thread.scheduledDate}
+                                      onSelect={(date) => handleDateChange(thread.id, date)}
+                                      disabled={(date) => isBefore(date, minDate)}
+                                      initialFocus
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Time</Label>
+                                <Input
+                                  type="time"
+                                  step="1"
+                                  value={format(thread.scheduledDate, 'HH:mm:ss')}
+                                  onChange={(e) => handleTimeChange(thread.id, e.target.value)}
+                                  className="h-8 text-xs"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Thread Actions */}
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="flex-1 h-7 text-xs gap-1 hover:bg-accent/20"
+                                onClick={() => handleRegenerateThread(thread.id)}
+                                disabled={isRegenerating}
+                              >
+                                <RefreshCw className={cn('w-3 h-3', isRegenerating && 'animate-spin')} />
+                                Regenerate
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="flex-1 h-7 text-xs gap-1 hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => handleDeleteThread(thread.id)}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Draggable>
+                );
+              })}
+              {provided.placeholder}
             </div>
-          );
-        })}
-      </div>
+          )}
+        </Droppable>
+      </DragDropContext>
 
       {/* Add Thread Button */}
       <Button
