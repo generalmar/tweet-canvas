@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { AccountSwitcher } from '@/components/AccountSwitcher';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -72,8 +73,20 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         })}
       </nav>
 
-      {/* Collapse Button - Desktop only */}
-      <div className="p-3 border-t border-border/50 hidden lg:block">
+      {/* Account Switcher */}
+      <div className="p-3 border-t border-border/50">
+        <AccountSwitcher collapsed={collapsed} />
+      </div>
+
+      {/* Theme Toggle & Collapse - Desktop only */}
+      <div className="p-3 border-t border-border/50 hidden lg:flex flex-col gap-2">
+        <div className={cn(
+          'flex items-center',
+          collapsed ? 'justify-center' : 'justify-between px-1'
+        )}>
+          {!collapsed && <span className="text-xs text-muted-foreground">Theme</span>}
+          <ThemeToggle />
+        </div>
         <Button
           variant="ghost"
           size="sm"
