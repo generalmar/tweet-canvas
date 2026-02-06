@@ -1,11 +1,18 @@
 import { useState } from 'react';
-import { Youtube, Sparkles, PenLine, ArrowRight, Link as LinkIcon, Check } from 'lucide-react';
+import { Youtube, Sparkles, PenLine, ArrowRight, Link as LinkIcon, Check, ChevronDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { CustomTweetEditor } from './CustomTweetEditor';
 import { 
@@ -54,21 +61,28 @@ const methodOptions: {
 ];
 
 export const Step1CreationMethod = ({ state, onUpdate, onNext }: Step1Props) => {
-  const [showCustomNiche, setShowCustomNiche] = useState(false);
-
   const handleMethodSelect = (method: CreationMethod) => {
     onUpdate({ creationMethod: method });
   };
 
   const handleNicheSelect = (niche: string) => {
-    setShowCustomNiche(false);
-    onUpdate({ 
-      aiConfig: { 
-        ...state.aiConfig, 
-        niche, 
-        customNiche: '' 
-      } 
-    });
+    if (niche === 'custom') {
+      onUpdate({ 
+        aiConfig: { 
+          ...state.aiConfig, 
+          niche: '',
+          customNiche: state.aiConfig.customNiche || '' 
+        } 
+      });
+    } else {
+      onUpdate({ 
+        aiConfig: { 
+          ...state.aiConfig, 
+          niche, 
+          customNiche: '' 
+        } 
+      });
+    }
   };
 
   const handlePillarToggle = (pillar: string) => {
@@ -195,41 +209,59 @@ export const Step1CreationMethod = ({ state, onUpdate, onNext }: Step1Props) => 
             {/* Niche Selection */}
             <div className="space-y-3">
               <Label>Select Your Niche</Label>
-              <div className="flex flex-wrap gap-2">
-                {defaultNiches.map((niche) => (
-                  <Badge
-                    key={niche}
-                    variant={state.aiConfig.niche === niche ? 'default' : 'outline'}
-                    className={cn(
-                      'cursor-pointer py-1.5 px-3 text-sm transition-all',
-                      state.aiConfig.niche === niche && 'bg-primary hover:bg-primary/90'
-                    )}
-                    onClick={() => handleNicheSelect(niche)}
+              <Select
+                value={state.aiConfig.niche || (state.aiConfig.customNiche ? 'custom' : '')}
+                onValueChange={handleNicheSelect}
+              >
+                <SelectTrigger className="w-full h-12 text-base">
+                  <SelectValue placeholder="Choose your content niche...">
+                    {state.aiConfig.niche || (state.aiConfig.customNiche ? 'Custom Niche' : 'Choose your content niche...')}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {defaultNiches.map((niche) => (
+                    <SelectItem 
+                      key={niche} 
+                      value={niche}
+                      className="py-3 px-4 cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          'w-2 h-2 rounded-full',
+                          state.aiConfig.niche === niche ? 'bg-primary' : 'bg-muted-foreground/30'
+                        )} />
+                        <span>{niche}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                  <SelectItem 
+                    value="custom"
+                    className="py-3 px-4 cursor-pointer border-t border-border mt-1"
                   >
-                    {niche}
-                  </Badge>
-                ))}
-                <Badge
-                  variant={showCustomNiche ? 'default' : 'outline'}
-                  className="cursor-pointer py-1.5 px-3 text-sm"
-                  onClick={() => {
-                    setShowCustomNiche(true);
-                    onUpdate({ aiConfig: { ...state.aiConfig, niche: '' } });
-                  }}
-                >
-                  + Custom
-                </Badge>
-              </div>
-              {showCustomNiche && (
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        'w-2 h-2 rounded-full',
+                        state.aiConfig.customNiche ? 'bg-primary' : 'bg-muted-foreground/30'
+                      )} />
+                      <span>+ Custom Niche</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {/* Custom Niche Input */}
+              {(state.aiConfig.niche === '' && state.aiConfig.customNiche !== undefined) || 
+               (!state.aiConfig.niche && state.aiConfig.customNiche) ? (
                 <Input
-                  placeholder="Enter your custom niche..."
+                  placeholder="Enter your custom niche (e.g., Web3 Gaming, Climate Tech)..."
                   value={state.aiConfig.customNiche}
                   onChange={(e) => onUpdate({
-                    aiConfig: { ...state.aiConfig, customNiche: e.target.value }
+                    aiConfig: { ...state.aiConfig, customNiche: e.target.value, niche: '' }
                   })}
-                  className="mt-2 animate-fade-in"
+                  className="mt-2 animate-fade-in h-11"
+                  autoFocus
                 />
-              )}
+              ) : null}
             </div>
 
             {/* Content Pillars */}
