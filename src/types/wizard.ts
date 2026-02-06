@@ -14,10 +14,17 @@ export interface AIConfig {
   tone: TweetTone;
 }
 
+export interface CustomThreadItem {
+  id: string;
+  content: string;
+  mediaFiles: File[];
+}
+
 export interface CustomConfig {
   content: string;
   includeThreads: boolean;
-  threadCount: number;
+  threads: CustomThreadItem[];
+  mediaFiles: File[];
 }
 
 export interface CampaignConfig {
@@ -85,7 +92,8 @@ export const defaultWizardState: WizardState = {
   customConfig: {
     content: '',
     includeThreads: false,
-    threadCount: 0,
+    threads: [],
+    mediaFiles: [],
   },
   campaignConfig: {
     timeline: 7,
