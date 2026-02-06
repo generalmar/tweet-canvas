@@ -150,11 +150,19 @@ export const Step3Review = ({ state, onBack, onGenerate }: Step3Props) => {
                   </p>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Thread Tweets</span>
+                  <span className="text-sm text-muted-foreground">Thread Replies</span>
                   <Badge variant="secondary">
-                    {state.customConfig.includeThreads ? state.customConfig.threadCount : 0}
+                    {state.customConfig.threads.length}
                   </Badge>
                 </div>
+                {state.customConfig.mediaFiles.length > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Media Attached</span>
+                    <Badge variant="secondary">
+                      {state.customConfig.mediaFiles.length} file(s)
+                    </Badge>
+                  </div>
+                )}
               </>
             )}
           </CardContent>

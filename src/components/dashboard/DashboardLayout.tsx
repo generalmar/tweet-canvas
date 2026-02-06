@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -117,6 +118,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               <span className="font-semibold text-foreground">Tweet Planner</span>
             </div>
           </div>
+          <ThemeToggle />
         </div>
       </header>
 

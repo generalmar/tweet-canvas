@@ -5,15 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { CustomTweetEditor } from './CustomTweetEditor';
 import { 
   CreationMethod, 
   WizardState, 
   defaultNiches, 
   defaultContentPillars, 
-  toneOptions 
+  toneOptions,
+  CustomThreadItem
 } from '@/types/wizard';
 
 interface Step1Props {
@@ -301,64 +302,20 @@ export const Step1CreationMethod = ({ state, onUpdate, onNext }: Step1Props) => 
               <h3 className="font-semibold text-lg text-foreground">Write Your Tweet</h3>
             </div>
             
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="custom-content">Tweet Content</Label>
-                <span className={cn(
-                  'text-xs',
-                  state.customConfig.content.length > 280 ? 'text-destructive' : 'text-muted-foreground'
-                )}>
-                  {state.customConfig.content.length}/280
-                </span>
-              </div>
-              <Textarea
-                id="custom-content"
-                placeholder="What's on your mind?"
-                value={state.customConfig.content}
-                onChange={(e) => onUpdate({
-                  customConfig: { ...state.customConfig, content: e.target.value }
-                })}
-                className="min-h-[120px] resize-none"
-              />
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
-              <div>
-                <Label htmlFor="custom-threads" className="font-medium">Add Thread</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">Create a multi-tweet thread</p>
-              </div>
-              <Switch
-                id="custom-threads"
-                checked={state.customConfig.includeThreads}
-                onCheckedChange={(checked) => onUpdate({
-                  customConfig: { 
-                    ...state.customConfig, 
-                    includeThreads: checked,
-                    threadCount: checked ? 2 : 0
-                  }
-                })}
-              />
-            </div>
-
-            {state.customConfig.includeThreads && (
-              <div className="space-y-2 animate-fade-in">
-                <Label>Number of Thread Tweets</Label>
-                <div className="flex items-center gap-3">
-                  {[2, 3, 4, 5].map((count) => (
-                    <Button
-                      key={count}
-                      variant={state.customConfig.threadCount === count ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => onUpdate({
-                        customConfig: { ...state.customConfig, threadCount: count }
-                      })}
-                    >
-                      {count}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
+            <CustomTweetEditor
+              mainContent={state.customConfig.content}
+              onMainContentChange={(content) => onUpdate({
+                customConfig: { ...state.customConfig, content }
+              })}
+              threads={state.customConfig.threads}
+              onThreadsChange={(threads: CustomThreadItem[]) => onUpdate({
+                customConfig: { ...state.customConfig, threads, includeThreads: threads.length > 0 }
+              })}
+              mainMediaFiles={state.customConfig.mediaFiles}
+              onMainMediaFilesChange={(mediaFiles) => onUpdate({
+                customConfig: { ...state.customConfig, mediaFiles }
+              })}
+            />
           </CardContent>
         </Card>
       )}

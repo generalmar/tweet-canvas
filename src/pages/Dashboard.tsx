@@ -11,8 +11,8 @@ import {
   Target
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+import { EngagementChart } from '@/components/dashboard/EngagementChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const stats = [
@@ -109,6 +109,9 @@ const Dashboard = () => {
               </Card>
             ))}
           </div>
+
+          {/* Engagement Chart */}
+          <EngagementChart />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Quick Actions */}
