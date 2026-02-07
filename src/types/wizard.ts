@@ -1,4 +1,4 @@
-export type CreationMethod = 'youtube' | 'ai' | 'custom';
+export type CreationMethod = 'youtube' | 'ai';
 
 export type TweetTone = 'educational' | 'professional' | 'casual' | 'humorous' | 'inspirational' | 'controversial';
 

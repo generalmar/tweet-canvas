@@ -87,8 +87,9 @@ export const KanbanBoard = () => {
         if (col.id === newDayId) {
           return {
             ...col,
+            // Sort by latest first (descending order)
             tweets: [...filtered, updatedTweet].sort(
-              (a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime()
+              (a, b) => b.scheduledDate.getTime() - a.scheduledDate.getTime()
             ),
           };
         }
@@ -150,7 +151,8 @@ export const KanbanBoard = () => {
     setColumns((prevColumns) =>
       prevColumns.map((col) =>
         col.id === dayId
-          ? { ...col, tweets: [...col.tweets, newTweet].sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime()) }
+          // Sort by latest first (descending order)
+          ? { ...col, tweets: [...col.tweets, newTweet].sort((a, b) => b.scheduledDate.getTime() - a.scheduledDate.getTime()) }
           : col
       )
     );
