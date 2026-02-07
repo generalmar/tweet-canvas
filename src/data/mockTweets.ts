@@ -1,8 +1,24 @@
 import { Tweet, KanbanColumn, DayOfWeek, TweetThread } from '@/types/tweet';
-import { startOfWeek, addDays, setHours, setMinutes, addSeconds } from 'date-fns';
+import { startOfDay, addDays, setHours, setMinutes, addSeconds, isBefore, startOfToday } from 'date-fns';
 
-const today = new Date();
-const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
+const today = startOfToday();
+
+// Get the next occurrence of each day starting from today
+const getNextFutureDay = (dayOffset: number): Date => {
+  const todayDayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const targetDayOfWeek = dayOffset === 6 ? 0 : dayOffset + 1; // Convert 0-6 (Mon-Sun) to 0-6 (Sun-Sat)
+  
+  let daysUntilTarget = targetDayOfWeek - todayDayOfWeek;
+  if (daysUntilTarget < 0) {
+    daysUntilTarget += 7;
+  }
+  // If it's today and we want future dates, move to next week for today
+  if (daysUntilTarget === 0) {
+    daysUntilTarget = 0; // Keep today as a valid option
+  }
+  
+  return addDays(today, daysUntilTarget);
+};
 
 const mockAuthors = [
   { name: 'Sarah Chen', handle: '@sarahcodes', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah' },
@@ -62,18 +78,17 @@ const generateThreads = (mainTweetDate: Date, count: number): TweetThread[] => {
   return threads;
 };
 
-const generateTweet = (dayOffset: number, index: number): Tweet => {
-  const date = addDays(weekStart, dayOffset);
+const generateTweet = (futureDate: Date, index: number): Tweet => {
   const author = mockAuthors[Math.floor(Math.random() * mockAuthors.length)];
-  const content = tweetContents[(dayOffset * 2 + index) % tweetContents.length];
-  const scheduledDate = generateRandomTime(date);
+  const content = tweetContents[(futureDate.getDate() * 2 + index) % tweetContents.length];
+  const scheduledDate = generateRandomTime(futureDate);
   
   // Randomly add 0-3 threads to some tweets
   const threadCount = Math.random() > 0.5 ? Math.floor(Math.random() * 3) + 1 : 0;
   const threads = threadCount > 0 ? generateThreads(scheduledDate, threadCount) : undefined;
   
   return {
-    id: `tweet-${dayOffset}-${index}-${Date.now()}`,
+    id: `tweet-${futureDate.getDate()}-${index}-${Date.now()}`,
     content,
     scheduledDate,
     author,
@@ -97,19 +112,20 @@ export const generateMockColumns = (): KanbanColumn[] => {
   
   for (let i = 0; i < 7; i++) {
     const dayName = getDayName(i);
-    const date = addDays(weekStart, i);
+    const futureDate = getNextFutureDay(i);
     const tweetCount = Math.floor(Math.random() * 3) + 1; // 1-3 tweets per day
     
     const tweets: Tweet[] = [];
     for (let j = 0; j < tweetCount; j++) {
-      tweets.push(generateTweet(i, j));
+      tweets.push(generateTweet(futureDate, j));
     }
     
     columns.push({
       id: dayName,
       title: getDayTitle(dayName),
-      date,
-      tweets: tweets.sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime()),
+      date: futureDate,
+      // Sort by latest first (descending order)
+      tweets: tweets.sort((a, b) => b.scheduledDate.getTime() - a.scheduledDate.getTime()),
     });
   }
   

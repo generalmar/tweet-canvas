@@ -1,8 +1,9 @@
 import { useRef, forwardRef } from 'react';
-import { Image, Smile, MapPin, CalendarDays } from 'lucide-react';
+import { Image, MapPin, CalendarDays } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { TwitterMediaCarousel, MediaFile, useMediaFiles } from './TwitterMediaCarousel';
+import { EmojiPicker } from './EmojiPicker';
 import { cn } from '@/lib/utils';
 
 interface TwitterTextareaProps {
@@ -36,6 +37,7 @@ export const TwitterTextarea = forwardRef<HTMLTextAreaElement, TwitterTextareaPr
   disabled = false,
 }, ref) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   
   const characterCount = value.length;
   const isOverLimit = characterCount > maxLength;
@@ -56,12 +58,40 @@ export const TwitterTextarea = forwardRef<HTMLTextAreaElement, TwitterTextareaPr
     }
   };
 
+  const handleEmojiSelect = (emoji: string) => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart || 0;
+      const end = textarea.selectionEnd || 0;
+      const newValue = value.slice(0, start) + emoji + value.slice(end);
+      onChange(newValue);
+      
+      // Set cursor position after emoji
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + emoji.length, start + emoji.length);
+      }, 0);
+    } else {
+      onChange(value + emoji);
+    }
+  };
+
+  // Combine refs
+  const setRefs = (element: HTMLTextAreaElement | null) => {
+    textareaRef.current = element;
+    if (typeof ref === 'function') {
+      ref(element);
+    } else if (ref) {
+      ref.current = element;
+    }
+  };
+
   return (
     <div className={cn("space-y-3", className)}>
       {/* Textarea */}
       <div className="relative">
         <Textarea
-          ref={ref}
+          ref={setRefs}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
@@ -110,15 +140,10 @@ export const TwitterTextarea = forwardRef<HTMLTextAreaElement, TwitterTextareaPr
               <Image className="w-5 h-5" />
             </Button>
             
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-full text-primary hover:bg-primary/10"
+            <EmojiPicker 
+              onEmojiSelect={handleEmojiSelect} 
               disabled={disabled}
-            >
-              <Smile className="w-5 h-5" />
-            </Button>
+            />
             
             <Button
               type="button"

@@ -4,7 +4,6 @@ import {
   ArrowLeft, 
   Sparkles, 
   Youtube, 
-  PenLine, 
   Calendar, 
   Clock, 
   Hash,
@@ -27,19 +26,16 @@ interface Step3Props {
 const methodIcons = {
   youtube: Youtube,
   ai: Sparkles,
-  custom: PenLine,
 };
 
 const methodLabels = {
   youtube: 'YouTube Video',
   ai: 'AI Generated',
-  custom: 'Custom Content',
 };
 
 const methodColors = {
   youtube: 'text-red-500',
   ai: 'text-purple-500',
-  custom: 'text-blue-500',
 };
 
 export const Step3Review = ({ state, onBack, onGenerate }: Step3Props) => {
@@ -141,30 +137,6 @@ export const Step3Review = ({ state, onBack, onGenerate }: Step3Props) => {
               </>
             )}
 
-            {state.creationMethod === 'custom' && (
-              <>
-                <div className="space-y-1.5">
-                  <span className="text-sm text-muted-foreground">Content Preview</span>
-                  <p className="text-sm bg-muted/50 p-3 rounded-lg line-clamp-3">
-                    {state.customConfig.content}
-                  </p>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Thread Replies</span>
-                  <Badge variant="secondary">
-                    {state.customConfig.threads.length}
-                  </Badge>
-                </div>
-                {state.customConfig.mediaFiles.length > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Media Attached</span>
-                    <Badge variant="secondary">
-                      {state.customConfig.mediaFiles.length} file(s)
-                    </Badge>
-                  </div>
-                )}
-              </>
-            )}
           </CardContent>
         </Card>
 

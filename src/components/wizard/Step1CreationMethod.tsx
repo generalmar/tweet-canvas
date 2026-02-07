@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Youtube, Sparkles, PenLine, ArrowRight, Link as LinkIcon, Check, ChevronDown } from 'lucide-react';
+import { Youtube, Sparkles, ArrowRight, Link as LinkIcon, Check } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,14 +14,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { CustomTweetEditor } from './CustomTweetEditor';
 import { 
   CreationMethod, 
   WizardState, 
   defaultNiches, 
   defaultContentPillars, 
   toneOptions,
-  CustomThreadItem
 } from '@/types/wizard';
 
 interface Step1Props {
@@ -50,13 +48,6 @@ const methodOptions: {
     title: 'AI Generated', 
     description: 'Let AI create for your niche',
     gradient: 'from-purple-500 to-pink-500'
-  },
-  { 
-    id: 'custom', 
-    icon: PenLine, 
-    title: 'Write Custom', 
-    description: 'Create your own content',
-    gradient: 'from-blue-500 to-cyan-500'
   },
 ];
 
@@ -102,8 +93,6 @@ export const Step1CreationMethod = ({ state, onUpdate, onNext }: Step1Props) => 
       case 'ai':
         return (state.aiConfig.niche || state.aiConfig.customNiche) && 
                state.aiConfig.contentPillars.length > 0;
-      case 'custom':
-        return state.customConfig.content.trim().length > 0;
       default:
         return false;
     }
@@ -118,7 +107,7 @@ export const Step1CreationMethod = ({ state, onUpdate, onNext }: Step1Props) => 
           <p className="text-sm text-muted-foreground mt-1">Choose your content creation method</p>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {methodOptions.map((method) => {
             const isSelected = state.creationMethod === method.id;
             return (
@@ -326,31 +315,6 @@ export const Step1CreationMethod = ({ state, onUpdate, onNext }: Step1Props) => 
         </Card>
       )}
 
-      {state.creationMethod === 'custom' && (
-        <Card className="animate-fade-in">
-          <CardContent className="p-6 space-y-5">
-            <div className="flex items-center gap-3 text-blue-500">
-              <PenLine className="w-6 h-6" />
-              <h3 className="font-semibold text-lg text-foreground">Write Your Tweet</h3>
-            </div>
-            
-            <CustomTweetEditor
-              mainContent={state.customConfig.content}
-              onMainContentChange={(content) => onUpdate({
-                customConfig: { ...state.customConfig, content }
-              })}
-              threads={state.customConfig.threads}
-              onThreadsChange={(threads: CustomThreadItem[]) => onUpdate({
-                customConfig: { ...state.customConfig, threads, includeThreads: threads.length > 0 }
-              })}
-              mainMediaFiles={state.customConfig.mediaFiles}
-              onMainMediaFilesChange={(mediaFiles) => onUpdate({
-                customConfig: { ...state.customConfig, mediaFiles }
-              })}
-            />
-          </CardContent>
-        </Card>
-      )}
 
       {/* Next Button */}
       <div className="flex justify-end pt-4">
