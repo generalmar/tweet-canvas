@@ -9,7 +9,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
@@ -17,6 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { regenerateTweetContent, getDayName, recalculateThreadDates } from '@/data/mockTweets';
 import { cn } from '@/lib/utils';
 import { ThreadEditor } from './ThreadEditor';
+import { TwitterTextarea } from './TwitterTextarea';
+import { MediaFile, useMediaFiles } from './TwitterMediaCarousel';
 
 interface EditTweetModalProps {
   tweet: Tweet | null;
@@ -42,6 +43,7 @@ export const EditTweetModal = ({ tweet, isOpen, onClose, onSave }: EditTweetModa
   const [selectedDay, setSelectedDay] = useState<DayOfWeek>('monday');
   const [threads, setThreads] = useState<TweetThread[]>([]);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const { mediaFiles, setMediaFiles, addFiles, removeFile, clearFiles } = useMediaFiles();
 
   useEffect(() => {
     if (tweet) {
@@ -50,6 +52,7 @@ export const EditTweetModal = ({ tweet, isOpen, onClose, onSave }: EditTweetModa
       setScheduledTime(format(tweet.scheduledDate, 'HH:mm'));
       setSelectedDay(getDayName(tweet.scheduledDate.getDay() === 0 ? 6 : tweet.scheduledDate.getDay() - 1));
       setThreads(tweet.threads || []);
+      clearFiles(); // Reset media when tweet changes
     }
   }, [tweet]);
 
@@ -140,28 +143,22 @@ export const EditTweetModal = ({ tweet, isOpen, onClose, onSave }: EditTweetModa
             </div>
           </div>
 
-          {/* Content */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="content" className="text-sm font-medium">
-                Tweet Content
-              </Label>
-              <span
-                className={cn(
-                  'text-xs font-medium',
-                  isOverLimit ? 'text-destructive' : 'text-muted-foreground'
-                )}
-              >
-                {characterCount}/{maxCharacters}
-              </span>
+          {/* Content with Twitter-like Textarea */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Tweet Content</Label>
+            <div className="rounded-xl border border-border bg-background p-4">
+              <TwitterTextarea
+                value={content}
+                onChange={setContent}
+                mediaFiles={mediaFiles}
+                onMediaFilesChange={setMediaFiles}
+                onAddMedia={addFiles}
+                onRemoveMedia={removeFile}
+                onEditMedia={(id) => console.log('Edit media:', id)}
+                placeholder="What's happening?"
+                minHeight="80px"
+              />
             </div>
-            <Textarea
-              id="content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="min-h-[100px] resize-none rounded-xl"
-              placeholder="What's happening?"
-            />
             <Button
               variant="outline"
               size="sm"
@@ -241,7 +238,7 @@ export const EditTweetModal = ({ tweet, isOpen, onClose, onSave }: EditTweetModa
             </div>
           </div>
 
-          {/* Thread Editor */}
+          {/* Thread Editor with Media Support */}
           <ThreadEditor
             threads={threads}
             mainTweetDate={scheduledDate}
