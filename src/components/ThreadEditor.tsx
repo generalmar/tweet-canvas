@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { TweetThread } from '@/types/tweet';
 import { format, addSeconds, isBefore } from 'date-fns';
-import { RefreshCw, Trash2, Clock, Plus, MessageSquare, ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
+import { RefreshCw, Trash2, Clock, Plus, MessageSquare, ChevronDown, ChevronUp, GripVertical, Image, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,12 @@ import { regenerateThreadContent, generateNewThread, recalculateThreadDates } fr
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { TwitterMediaCarousel, MediaFile } from './TwitterMediaCarousel';
+
+// Extended thread type with media
+interface ThreadWithMedia extends TweetThread {
+  mediaFiles?: MediaFile[];
+}
 
 interface ThreadEditorProps {
   threads: TweetThread[];
@@ -18,9 +24,14 @@ interface ThreadEditorProps {
   onThreadsChange: (threads: TweetThread[]) => void;
 }
 
+// Helper to generate unique IDs for media
+const generateMediaId = () => `media-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
 export const ThreadEditor = ({ threads, mainTweetDate, onThreadsChange }: ThreadEditorProps) => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [regeneratingIds, setRegeneratingIds] = useState<Set<string>>(new Set());
+  const [threadMedia, setThreadMedia] = useState<Record<string, MediaFile[]>>({});
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const toggleExpanded = (threadId: string) => {
     setExpandedThreads((prev) => {
@@ -67,6 +78,34 @@ export const ThreadEditor = ({ threads, mainTweetDate, onThreadsChange }: Thread
     onThreadsChange(
       threads.map((t) => (t.id === threadId ? { ...t, content } : t))
     );
+  };
+
+  // Media handling for threads
+  const handleAddMedia = (threadId: string, files: FileList) => {
+    const fileArray = Array.from(files);
+    const newMedia: MediaFile[] = fileArray.map((file) => ({
+      id: generateMediaId(),
+      file,
+      url: URL.createObjectURL(file),
+      type: file.type.startsWith('video/') ? 'video' : 'image',
+    }));
+
+    setThreadMedia((prev) => {
+      const existing = prev[threadId] || [];
+      const combined = [...existing, ...newMedia].slice(0, 4);
+      return { ...prev, [threadId]: combined };
+    });
+  };
+
+  const handleRemoveMedia = (threadId: string, mediaId: string) => {
+    setThreadMedia((prev) => {
+      const existing = prev[threadId] || [];
+      const media = existing.find((m) => m.id === mediaId);
+      if (media) {
+        URL.revokeObjectURL(media.url);
+      }
+      return { ...prev, [threadId]: existing.filter((m) => m.id !== mediaId) };
+    });
   };
 
   const handleDateChange = (threadId: string, date: Date | undefined) => {
@@ -261,12 +300,50 @@ export const ThreadEditor = ({ threads, mainTweetDate, onThreadsChange }: Thread
                         {/* Thread Content (Expanded) */}
                         {isExpanded && (
                           <div className="p-3 pt-0 space-y-3 border-t border-border/30">
-                            <Textarea
-                              value={thread.content}
-                              onChange={(e) => handleContentChange(thread.id, e.target.value)}
-                              className="min-h-[80px] resize-none rounded-lg text-sm"
-                              placeholder="Thread content..."
-                            />
+                            {/* Textarea with media button */}
+                            <div className="relative">
+                              <Textarea
+                                value={thread.content}
+                                onChange={(e) => handleContentChange(thread.id, e.target.value)}
+                                className="min-h-[80px] resize-none rounded-lg text-sm pr-10"
+                                placeholder="Thread content..."
+                              />
+                              <input
+                                ref={(el) => (fileInputRefs.current[thread.id] = el)}
+                                type="file"
+                                accept="image/*,video/*"
+                                multiple
+                                className="hidden"
+                                onChange={(e) => {
+                                  if (e.target.files) {
+                                    handleAddMedia(thread.id, e.target.files);
+                                  }
+                                  e.target.value = '';
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                  "absolute bottom-2 right-2 h-7 w-7 text-primary hover:bg-primary/10 rounded-full",
+                                  (threadMedia[thread.id]?.length || 0) >= 4 && "opacity-50 cursor-not-allowed"
+                                )}
+                                onClick={() => fileInputRefs.current[thread.id]?.click()}
+                                disabled={(threadMedia[thread.id]?.length || 0) >= 4}
+                              >
+                                <Image className="w-4 h-4" />
+                              </Button>
+                            </div>
+
+                            {/* Thread Media Carousel */}
+                            {threadMedia[thread.id]?.length > 0 && (
+                              <TwitterMediaCarousel
+                                mediaFiles={threadMedia[thread.id]}
+                                onRemove={(mediaId) => handleRemoveMedia(thread.id, mediaId)}
+                                onEdit={(mediaId) => console.log('Edit media:', mediaId)}
+                              />
+                            )}
 
                             {/* Thread Schedule */}
                             <div className="grid grid-cols-2 gap-2">
